@@ -56,7 +56,7 @@ public class ResultActivity extends BaseActivity {
 
         try {
             UCropView uCropView = (UCropView) findViewById(R.id.ucrop);
-            uCropView.getCropImageView().setImageUri(getIntent().getData(), null);
+            uCropView.getCropImageView().setImageUri(getIntent().getData(), null, "SampleCropImage");
             uCropView.getOverlayView().setShowCropFrame(false);
             uCropView.getOverlayView().setShowCropGrid(false);
             uCropView.getOverlayView().setDimmedColor(Color.TRANSPARENT);

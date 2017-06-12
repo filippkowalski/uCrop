@@ -9,6 +9,7 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.annotation.ColorInt;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.IdRes;
@@ -44,9 +45,14 @@ import com.yalantis.ucrop.view.UCropView;
 import com.yalantis.ucrop.view.widget.AspectRatioTextView;
 import com.yalantis.ucrop.view.widget.HorizontalProgressWheelView;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
@@ -183,7 +189,7 @@ public class UCropActivity extends AppCompatActivity {
 
         if (inputUri != null && outputUri != null) {
             try {
-                mGestureCropImageView.setImageUri(inputUri, outputUri);
+                mGestureCropImageView.setImageUri(inputUri, outputUri, "SampleCropImage");
             } catch (Exception e) {
                 setResultError(e);
                 finish();
@@ -613,8 +619,11 @@ public class UCropActivity extends AppCompatActivity {
 
             @Override
             public void onBitmapCropped(@NonNull Uri resultUri, int offsetX, int offsetY, int imageWidth, int imageHeight) {
-                setResultUri(resultUri, mGestureCropImageView.getTargetAspectRatio(), offsetX, offsetY, imageWidth, imageHeight);
-                finish();
+	            try {
+		            copyFileToDownloads(resultUri);
+	            } catch (Exception e) {
+		            e.printStackTrace();
+	            }
             }
 
             @Override
@@ -640,4 +649,18 @@ public class UCropActivity extends AppCompatActivity {
         setResult(UCrop.RESULT_ERROR, new Intent().putExtra(UCrop.EXTRA_ERROR, throwable));
     }
 
+    private void copyFileToDownloads(Uri croppedFileUri) throws Exception {
+        String downloadsDirectoryPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath();
+        String filename = String.format("%d_%s", Calendar.getInstance().getTimeInMillis(), croppedFileUri.getLastPathSegment());
+
+        File saveFile = new File(downloadsDirectoryPath, filename);
+
+        FileInputStream inStream = new FileInputStream(new File(croppedFileUri.getPath()));
+        FileOutputStream outStream = new FileOutputStream(saveFile);
+        FileChannel inChannel = inStream.getChannel();
+        FileChannel outChannel = outStream.getChannel();
+        inChannel.transferTo(0, inChannel.size(), outChannel);
+        inStream.close();
+        outStream.close();
+    }
 }

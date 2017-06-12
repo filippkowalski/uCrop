@@ -10,6 +10,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
+import com.yalantis.ucrop.callback.BitmapAsyncTaskCropCallback;
 import com.yalantis.ucrop.callback.BitmapCropCallback;
 import com.yalantis.ucrop.model.CropParameters;
 import com.yalantis.ucrop.model.ExifInfo;
@@ -48,14 +49,17 @@ public class BitmapCropTask extends AsyncTask<Void, Void, Throwable> {
 	private final String mImageInputPath, mImageOutputPath;
 	private final ExifInfo mExifInfo;
 	private final BitmapCropCallback mCropCallback;
+	private final BitmapAsyncTaskCropCallback mAsyncTaskCropCallback;
 
 	private int mCroppedImageWidth, mCroppedImageHeight;
 	private int cropOffsetX, cropOffsetY;
-	private int mImageColumn;
+	private int mColumnToCrop;
+	private int mCropColumnCount;
 
 	public BitmapCropTask(
 			@Nullable Bitmap viewBitmap, @NonNull ImageState imageState, @NonNull CropParameters cropParameters,
-			@Nullable BitmapCropCallback cropCallback, int imageColumn) {
+			@Nullable BitmapCropCallback cropCallback, @NonNull BitmapAsyncTaskCropCallback asyncTaskCropCallback,
+			int columnToCrop, int cropColumnCount) {
 
 		mViewBitmap = viewBitmap;
 		mCropRect = imageState.getCropRect();
@@ -65,7 +69,8 @@ public class BitmapCropTask extends AsyncTask<Void, Void, Throwable> {
 		mCurrentAngle = imageState.getCurrentAngle();
 		mMaxResultImageSizeX = cropParameters.getMaxResultImageSizeX();
 		mMaxResultImageSizeY = cropParameters.getMaxResultImageSizeY();
-		mImageColumn = imageColumn;
+		mColumnToCrop = columnToCrop;
+		mCropColumnCount = cropColumnCount;
 
 		mCompressFormat = cropParameters.getCompressFormat();
 		mCompressQuality = cropParameters.getCompressQuality();
@@ -75,6 +80,7 @@ public class BitmapCropTask extends AsyncTask<Void, Void, Throwable> {
 		mExifInfo = cropParameters.getExifInfo();
 
 		mCropCallback = cropCallback;
+		mAsyncTaskCropCallback = asyncTaskCropCallback;
 	}
 
 	@Override
@@ -133,10 +139,10 @@ public class BitmapCropTask extends AsyncTask<Void, Void, Throwable> {
 	private boolean crop(float resizeScale) throws IOException {
 		ExifInterface originalExif = new ExifInterface(mImageInputPath);
 
-		mCroppedImageWidth = Math.round((mCropRect.width() / mCurrentScale) / mImageColumn);
+		mCroppedImageWidth = Math.round(mCropRect.width() / mCurrentScale) / mCropColumnCount;
 		mCroppedImageHeight = Math.round(mCropRect.height() / mCurrentScale);
 		cropOffsetX = Math.round(((mCropRect.left - mCurrentImageRect.left) / mCurrentScale)
-				+ (mImageColumn * mCroppedImageWidth));
+				+ (mColumnToCrop * mCroppedImageWidth));
 		cropOffsetY = Math.round((mCropRect.top - mCurrentImageRect.top) / mCurrentScale);
 
 		boolean shouldCrop = shouldCrop(mCroppedImageWidth, mCroppedImageHeight);
@@ -187,6 +193,7 @@ public class BitmapCropTask extends AsyncTask<Void, Void, Throwable> {
 	protected void onPostExecute(@Nullable Throwable t) {
 		if (mCropCallback != null) {
 			if (t == null) {
+				mAsyncTaskCropCallback.onTaskFinished(mColumnToCrop);
 				Uri uri = Uri.fromFile(new File(mImageOutputPath));
 				mCropCallback.onBitmapCropped(uri, cropOffsetX, cropOffsetY, mCroppedImageWidth, mCroppedImageHeight);
 			} else {

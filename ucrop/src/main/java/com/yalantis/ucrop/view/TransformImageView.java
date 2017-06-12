@@ -51,7 +51,7 @@ public class TransformImageView extends ImageView {
 
     private int mMaxBitmapSize = 0;
 
-    private String mImageInputPath, mImageOutputPath;
+    private String mImageInputPath, mImageOutputPath, mImageName;
     private ExifInfo mExifInfo;
 
     /**
@@ -121,8 +121,8 @@ public class TransformImageView extends ImageView {
         return mImageInputPath;
     }
 
-    public String getImageOutputPath() {
-        return mImageOutputPath;
+    public String getImageOutputPath(int cropRowCount) {
+        return mImageOutputPath.replace(mImageName, mImageName + cropRowCount);
     }
 
     public ExifInfo getExifInfo() {
@@ -135,8 +135,9 @@ public class TransformImageView extends ImageView {
      * @param imageUri - image Uri
      * @throws Exception - can throw exception if having problems with decoding Uri or OOM.
      */
-    public void setImageUri(@NonNull Uri imageUri, @Nullable Uri outputUri) throws Exception {
+    public void setImageUri(@NonNull Uri imageUri, @Nullable Uri outputUri, String imageName) throws Exception {
         int maxBitmapSize = getMaxBitmapSize();
+        mImageName = imageName;
 
         BitmapLoadUtils.decodeBitmapInBackground(getContext(), imageUri, outputUri, maxBitmapSize, maxBitmapSize,
                 new BitmapLoadCallback() {

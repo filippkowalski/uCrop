@@ -12,6 +12,7 @@ import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 
 import com.yalantis.ucrop.R;
+import com.yalantis.ucrop.callback.BitmapAsyncTaskCropCallback;
 import com.yalantis.ucrop.callback.BitmapCropCallback;
 import com.yalantis.ucrop.callback.CropBoundsChangeListener;
 import com.yalantis.ucrop.model.CropParameters;
@@ -29,7 +30,7 @@ import java.util.Arrays;
  * This class adds crop feature, methods to draw crop guidelines, and keep image in correct state.
  * Also it extends parent class methods to add checks for scale; animating zoom in/out.
  */
-public class CropImageView extends TransformImageView {
+public class CropImageView extends TransformImageView implements BitmapAsyncTaskCropCallback {
 
 	public static final int DEFAULT_MAX_BITMAP_SIZE = 0;
 	public static final int DEFAULT_IMAGE_TO_CROP_BOUNDS_ANIM_DURATION = 500;
@@ -50,7 +51,12 @@ public class CropImageView extends TransformImageView {
 
 	private float mMaxScale, mMinScale;
 	private int mMaxResultImageSizeX = 0, mMaxResultImageSizeY = 0;
+	private int mCropRowCount;
 	private long mImageToWrapCropBoundsAnimDuration = DEFAULT_IMAGE_TO_CROP_BOUNDS_ANIM_DURATION;
+
+	private BitmapCropCallback mCropCallback;
+	private ImageState imageState;
+	private CropParameters cropParameters;
 
 	public CropImageView(Context context) {
 		this(context, null);
@@ -69,21 +75,29 @@ public class CropImageView extends TransformImageView {
 	 * Then creates and executes {@link BitmapCropTask} with proper parameters.
 	 */
 	public void cropAndSaveImage(@NonNull Bitmap.CompressFormat compressFormat, int compressQuality,
-	                             @Nullable BitmapCropCallback cropCallback, int cropRowCount) {
-		cancelAllAnimations();
-		setImageToWrapCropBounds(false);
+	                             @Nullable final BitmapCropCallback cropCallback, final int cropRowCount) {
+		mCropRowCount = cropRowCount;
+		mCropCallback = cropCallback;
 
-		final ImageState imageState = new ImageState(
+		imageState = new ImageState(
 				mCropRect, RectUtils.trapToRect(mCurrentImageCorners),
 				getCurrentScale(), getCurrentAngle());
 
-		final CropParameters cropParameters = new CropParameters(
+		cropParameters = new CropParameters(
 				mMaxResultImageSizeX, mMaxResultImageSizeY,
 				compressFormat, compressQuality,
-				getImageInputPath(), getImageOutputPath(), getExifInfo());
+				getImageInputPath(), getImageOutputPath(cropRowCount), getExifInfo());
 
-		for (int imageColumn = 0; imageColumn < 3; imageColumn++) {
-			new BitmapCropTask(getViewBitmap(), imageState, cropParameters, cropCallback, imageColumn).execute();
+		new BitmapCropTask(getViewBitmap(), imageState, cropParameters, cropCallback, this,
+				cropRowCount - 1, cropRowCount).execute();
+	}
+
+	// putting async task in view is bad
+	@Override
+	public void onTaskFinished(int cropColumn) {
+		if (cropColumn > 0) {
+			new BitmapCropTask(getViewBitmap(), imageState, cropParameters, mCropCallback, this,
+					cropColumn - 1, mCropRowCount).execute();
 		}
 	}
 
