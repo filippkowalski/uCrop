@@ -622,7 +622,7 @@ public class UCropActivity extends AppCompatActivity {
                 setResultError(t);
                 finish();
             }
-        });
+        }, 3);
     }
 
     protected void setResultUri(Uri uri, float resultAspectRatio, int offsetX, int offsetY, int imageWidth, int imageHeight) {
